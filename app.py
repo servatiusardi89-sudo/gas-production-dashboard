@@ -2,14 +2,29 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import plotly.graph_objects as go  # <-- Import Plotly
+import plotly.graph_objects as go
 import streamlit as st
+from PIL import Image  # <-- Import Pillow to handle image file loading
 
 # Set up Streamlit page configuration
-st.set_page_config(page_title="Ganal Block Production Dashboard", layout="wide")
+st.set_page_config(page_title="Texas Oil Co. - Asset Dashboard", layout="wide")
 
-# Add a dashboard title
-st.title("📊 Asset Performance & Metrics Dashboard")
+# ==========================================
+# BRANDING & LOGO INTEGRATION
+# ==========================================
+# Load the corporate logo into the sidebar
+try:
+    logo_img = Image.open("logo.jpg")
+    st.sidebar.image(logo_img, use_column_width=True)
+except FileNotFoundError:
+    # Fallback message if the image hasn't been uploaded to GitHub yet
+    st.sidebar.warning("⚠️ 'logo.jpg' not found in repo root. Please upload it to display company branding.")
+
+st.sidebar.markdown("<h2 style='text-align: center; color: #004080;'>Texas Oil Co.</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+
+# Add a dashboard title with corporate name
+st.title("📊 Texas Oil Co. - Asset Performance Dashboard")
 st.markdown("---")
 
 # --- Data Generation (Cached for Performance) ---
@@ -37,7 +52,6 @@ df_dataset = load_data()
 # --- Heavy 3D Grid & Reservoir Simulation Math (Cached) ---
 @st.cache_data
 def generate_3d_reservoir_model():
-    # Dimensions in feet
     x_dim, y_dim = 5000, 5000  
     z_start, z_end = 11500, 13500  
     nx, ny, nz = 40, 40, 50 
@@ -48,11 +62,10 @@ def generate_3d_reservoir_model():
 
     X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
 
-    P_at_grid_top = 11500 * 0.433  # ~4,980 psi
+    P_at_grid_top = 11500 * 0.433  
     res_top = 12000
     res_bottom = 13000
 
-    # Gradient calculations
     pressure = P_at_grid_top + (0.433 * (Z - z_start))
     gas_gradient = 0.15 
     gas_mask = (Z >= res_top) & (Z <= res_bottom) & (X > 1000) & (X < 4000) & (Y > 1000) & (Y < 4000)
@@ -60,12 +73,10 @@ def generate_3d_reservoir_model():
     P_at_res_top = P_at_grid_top + (0.433 * (res_top - z_start))
     pressure[gas_mask] = P_at_res_top + (gas_gradient * (Z[gas_mask] - res_top))
 
-    # Overpressure compartment cell injection
     overpressure_center = [2500, 2500, 12500]
     distance = np.sqrt((X - overpressure_center[0])**2 + (Y - overpressure_center[1])**2 + (Z - overpressure_center[2])**2)
     pressure += 1200 * np.exp(- (distance / 800)**2)
 
-    # Well production drawdown calculation
     well_x, well_y = 2500, 2500
     r_well = np.sqrt((X - well_x)**2 + (Y - well_y)**2)
     r_well = np.where(r_well < 25, 25, r_well) 
@@ -131,7 +142,6 @@ else:
 
 
 # --- Dashboard Layout: Tabs ---
-# Added Tab 5 for the interactive reservoir block map
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🕒 Uptime Analysis", 
     "🔥 Gas Production Analysis", 
@@ -280,10 +290,8 @@ if not filtered_df.empty:
         st.subheader("Interactive Reservoir Spatial Analysis")
         st.markdown("Examine subsurface structural variations, structural boundaries, and near-wellbore spatial localized drawdown pressures.")
 
-        # Execute cached data logic block
         X, Y, Z, pressure, res_top, res_bottom = generate_3d_reservoir_model()
 
-        # Build Interactive Plotly 3D Figure Object
         fig5 = go.Figure(data=go.Volume(
             x=X.flatten(),
             y=Y.flatten(),
@@ -297,7 +305,6 @@ if not filtered_df.empty:
             colorbar=dict(title=dict(text="Pressure (psi)", side="right")),
         ))
 
-        # Add Core Highlight Isosurface layer
         fig5.add_trace(go.Isosurface(
             x=X.flatten(),
             y=Y.flatten(),
@@ -316,12 +323,11 @@ if not filtered_df.empty:
                 xaxis_title="X (ft)",
                 yaxis_title="Y (ft)",
                 zaxis_title="Depth (ft)",
-                zaxis=dict(autorange="reversed"), # Keep depths structurally accurate
+                zaxis=dict(autorange="reversed"), 
                 camera=dict(eye=dict(x=1.4, y=1.4, z=1.4))
             ),
             margin=dict(l=0, r=0, b=0, t=40),
-            height=650 # Generous vertical real estate to view spatial layers cleanly
+            height=650 
         )
 
-        # Streamlit Plotly Engine integration command
         st.plotly_chart(fig5, use_container_width=True)
