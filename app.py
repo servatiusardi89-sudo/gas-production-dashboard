@@ -1,3 +1,81 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import streamlit as st  # <-- Import Streamlit
+
+# Set up Streamlit page configuration (Optional but looks great)
+st.set_page_config(page_title="Production Dashboard", layout="wide")
+
+# Add a dashboard title
+st.title("📊 Asset Performance & Metrics Dashboard")
+st.markdown("---")
+
+# Set seed for reproducibility
+np.random.seed(42)
+
+# Generate dummy dataset
+dates = pd.date_range(
+    start='2023-01-01',
+    end='2028-03-01',
+    freq='MS'
+)
+n = len(dates)
+
+df_dataset = pd.DataFrame({'Date': dates})
+df_dataset['Producing_Wells'] = np.linspace(2, 28, n).round()
+df_dataset['Reservoir_Pressure_Psi'] = np.linspace(8500, 7500, n)
+df_dataset['Uptime_%'] = np.random.normal(95, 2, n)
+df_dataset['Avg_Productivity_Per_Well_MMSCFD'] = np.random.normal(25, 2, n)
+df_dataset['Gas_Production_MMSCFD'] = (
+    df_dataset['Producing_Wells']
+    * df_dataset['Avg_Productivity_Per_Well_MMSCFD']
+    * (df_dataset['Uptime_%'] / 100)
+)
+
+# --- Streamlit Metric Section ---
+# Let's show the current average uptime as a quick KPI card!
+avg_uptime = df_dataset['Uptime_%'].mean()
+st.metric(label="Average Asset Uptime", value=f"{avg_uptime:.2f} %")
+
+# --- Visualization Code ---
+
+# Create the plot and set figure size
+fig, ax = plt.subplots(figsize=(10, 4))
+
+# Plot Uptime over time
+ax.plot(
+    df_dataset['Date'],
+    df_dataset['Uptime_%'],
+    marker='o',
+    linestyle='-',
+    color='#1f77b4',
+    markersize=4,
+    label='Monthly Uptime'
+)
+
+# Add titles and labels
+ax.set_title('Uptime % Trend Over Time', fontsize=14, fontweight='bold', pad=15)
+ax.set_xlabel('Month-Year', fontsize=12)
+ax.set_ylabel('Uptime (%)', fontsize=12)
+
+# Configure grid lines for readability
+ax.grid(True, linestyle='--', alpha=0.5)
+
+# Format X-axis to show dates every 6 months to prevent overlapping labels
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+
+# Rotate date labels for better spacing
+plt.xticks(rotation=45)
+
+# Adjust layout to fit everything properly
+plt.tight_layout()
+
+# --- Display in Streamlit ---
+# Instead of plt.savefig(), we pass the figure directly to Streamlit
+st.pyplot(fig)
+
 import streamlit as st
 import pandas as pd
 import numpy as np
